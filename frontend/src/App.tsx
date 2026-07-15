@@ -36,37 +36,56 @@ export default function App() {
   useEffect(() => {
     loadData();
 
-    const ws = new WebSocket(
-      `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`,
-    );
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let reconnectDelay = 1000;
 
-    ws.onopen = () => {
-      setWsConnected(true);
-    };
+    const connect = () => {
+      ws = new WebSocket(
+        `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`,
+      );
 
-    ws.onclose = () => {
-      setWsConnected(false);
-    };
+      ws.onopen = () => {
+        setWsConnected(true);
+        reconnectDelay = 1000;
+      };
 
-    ws.onmessage = (event) => {
-      try {
-        const msg: WSEvent = JSON.parse(event.data);
-        if (msg.type === 'request_finished') {
-          setRequests((prev) => [msg.payload, ...prev].slice(0, 100));
-          // Refresh metrics periodically on new events
-          fetchMetrics(60).then(setMetrics).catch(console.error);
+      ws.onclose = () => {
+        setWsConnected(false);
+        ws = null;
+        reconnectTimeout = setTimeout(() => {
+          connect();
+        }, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+      };
+
+      ws.onerror = () => {
+        setWsConnected(false);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg: WSEvent = JSON.parse(event.data);
+          if (msg.type === 'request_finished') {
+            setRequests((prev) => [msg.payload, ...prev].slice(0, 100));
+            // Refresh metrics periodically on new events
+            fetchMetrics(60).then(setMetrics).catch(console.error);
+          }
+        } catch (e) {
+          console.error('Failed to parse WS message', e);
         }
-      } catch (e) {
-        console.error('Failed to parse WS message', e);
-      }
+      };
     };
+
+    connect();
 
     const interval = setInterval(() => {
       fetchMetrics(60).then(setMetrics).catch(console.error);
     }, 10000);
 
     return () => {
-      ws.close();
+      if (ws) ws.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       clearInterval(interval);
     };
   }, []);

@@ -7,7 +7,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from config import config
-from dashboard_api import dashboard_app
+from dashboard_api import dashboard_router
 from dashboard_ws import ws_manager
 from proxy import proxy_app
 from storage import shard_manager
@@ -41,7 +41,7 @@ def make_dashboard_server_app():
     app = FastAPI(lifespan=dashboard_lifespan)
 
     # Include API routes
-    app.include_router(dashboard_app.router)
+    app.include_router(dashboard_router)
 
     # WebSocket endpoint
     @app.websocket("/ws")

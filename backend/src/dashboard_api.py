@@ -3,14 +3,14 @@ from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from models import RequestRecord
 from storage import shard_manager
 
 
-dashboard_app = FastAPI()
+dashboard_router = APIRouter()
 
 
 def _to_summary(record: dict[str, Any]) -> dict[str, Any]:
@@ -31,12 +31,12 @@ def _to_summary(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-@dashboard_app.get("/api/health")
+@dashboard_router.get("/api/health")
 async def health():
     return {"status": "ok"}
 
 
-@dashboard_app.get("/api/requests")
+@dashboard_router.get("/api/requests")
 async def list_requests(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -64,7 +64,7 @@ async def list_requests(
     return JSONResponse({"items": results, "limit": limit, "offset": offset})
 
 
-@dashboard_app.get("/api/requests/{request_id}")
+@dashboard_router.get("/api/requests/{request_id}")
 async def get_request(request_id: str):
     record = await shard_manager.read_record_by_id(request_id)
     if not record:
@@ -72,7 +72,7 @@ async def get_request(request_id: str):
     return JSONResponse(record)
 
 
-@dashboard_app.get("/api/metrics")
+@dashboard_router.get("/api/metrics")
 async def metrics(window: int = Query(60, ge=1, le=10080)):
     """Return aggregated metrics for the last  minutes."""
     now = datetime.now(timezone.utc)
