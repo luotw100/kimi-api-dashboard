@@ -141,10 +141,30 @@ async def _proxy_request(request: Request, path: str) -> StreamingResponse:
     except Exception as e:
         await client.aclose()
         msg = f"Proxy error: {e}".encode("utf-8")
+        error_status = 502
+        error_headers = {"content-type": "text/plain"}
+        error_body_parts = [msg]
+        error_ttfb_ms = round((time.time() - start_time) * 1000, 2)
+        asyncio.create_task(
+            _log_record(
+                request_id,
+                start_iso,
+                request,
+                body,
+                request_body_json,
+                model,
+                is_streaming,
+                error_status,
+                error_headers,
+                error_body_parts,
+                start_time,
+                error_ttfb_ms,
+            )
+        )
         return StreamingResponse(
             iter([msg]),
-            status_code=502,
-            headers={"content-type": "text/plain"},
+            status_code=error_status,
+            headers=error_headers,
             media_type="text/plain",
         )
 

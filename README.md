@@ -2,6 +2,8 @@
 
 本地透明代理 + 看板，用于观察 Claude Code 调用 Kimi API 的全过程。
 
+> 本仓库仅支持 Docker 方式运行，不维护本地开发环境。
+
 ## 访问地址
 
 - **看板 UI**：http://localhost:8788/
@@ -9,16 +11,14 @@
 
 ## 快速启动
 
-### 方式一：本地直接运行
+1. 复制环境变量模板并填入你的 API Key：
 
 ```bash
-cd backend
-uv run python src/main.py
+cp .env.example .env
+# 编辑 .env，填入 ANTHROPIC_API_KEY
 ```
 
-### 方式二：Docker（推荐）
-
-确保 `.env` 文件已配置好（API Key 等）。然后：
+2. 启动服务：
 
 ```bash
 docker-compose up --build -d
@@ -53,7 +53,7 @@ API Key 保持不变（代理会原样转发 `Authorization` 头）。
 ## 功能
 
 - 透明转发所有请求到 Kimi API，不修改语义
-- 完整记录每一次请求和响应到 `data/requests-*.jsonl`
+- 完整记录每一次请求和响应到 `data/requests-*.jsonl`，包括代理失败（502）的请求
 - 实时 WebSocket 推送新请求到看板
 - 解析 Anthropic `/v1/messages` 的 token 用量（含 cache token）
 - 数据目录超过 20GB 自动删除最老的分片
@@ -72,24 +72,17 @@ API Key 保持不变（代理会原样转发 `Authorization` 头）。
 │       ├── parser.py         # Anthropic 响应解析
 │       └── config.py         # 配置
 ├── frontend/
-│   └── dist/                 # 构建后的看板前端
+│   ├── src/                  # 看板前端源码
+│   └── dist/                 # 构建后的看板前端（由 Dockerfile 生成）
 ├── data/                     # JSONL 数据目录（自动创建）
 ├── .env                      # API Key 等配置（已加入 gitignore）
 ├── Dockerfile                # Docker 镜像构建
 ├── docker-compose.yml        # Docker Compose 配置
-├── run.sh                    # 本地启动脚本
-└── DESIGN.md                 # 设计文档
-```
-
-## 重新构建前端
-
-```bash
-cd frontend
-npm install
-npm run build
+└── README.md                 # 本文件
 ```
 
 ## 说明
 
 - JSONL 中保存了完整请求头（包括 `Authorization`）和请求体，请妥善保管，不要共享。
 - 当前为单进程单 worker 实现，适合个人本地使用。
+- 前端构建由 Dockerfile 自动完成，无需在本地执行 `npm install` / `npm run build`。
