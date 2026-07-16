@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchMetrics, fetchRequest, fetchRequests } from './api';
 import type { Metrics, RequestRecord, RequestSummary, WSEvent } from './types';
 
@@ -17,25 +17,41 @@ function formatTime(iso: string): string {
   return d.toLocaleTimeString();
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
 export default function App() {
   const [requests, setRequests] = useState<RequestSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [selected, setSelected] = useState<RequestRecord | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
 
-  const loadData = async () => {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const loadData = useCallback(async () => {
     try {
-      const [reqs, m] = await Promise.all([fetchRequests(100), fetchMetrics(60)]);
-      setRequests(reqs);
+      const offset = (currentPage - 1) * pageSize;
+      const [reqs, m] = await Promise.all([fetchRequests(pageSize, offset), fetchMetrics(60)]);
+      setRequests(reqs.items);
+      setTotal(reqs.total);
       setMetrics(m);
     } catch (e) {
       console.error('Failed to load data', e);
     }
-  };
+  }, [currentPage, pageSize]);
+
+  const loadDataRef = useRef(loadData);
+  useEffect(() => {
+    loadDataRef.current = loadData;
+  }, [loadData]);
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
 
+  useEffect(() => {
     let ws: WebSocket | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
     let reconnectDelay = 1000;
@@ -67,8 +83,7 @@ export default function App() {
         try {
           const msg: WSEvent = JSON.parse(event.data);
           if (msg.type === 'request_finished') {
-            setRequests((prev) => [msg.payload, ...prev].slice(0, 100));
-            // Refresh metrics periodically on new events
+            loadDataRef.current();
             fetchMetrics(60).then(setMetrics).catch(console.error);
           }
         } catch (e) {
@@ -89,6 +104,19 @@ export default function App() {
       clearInterval(interval);
     };
   }, []);
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
+
+  const handlePrevPage = () => {
+    setCurrentPage((p) => Math.max(1, p - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((p) => Math.min(totalPages, p + 1));
+  };
 
   const handleRowClick = async (req: RequestSummary) => {
     try {
@@ -135,36 +163,68 @@ export default function App() {
           No requests yet. Send a request through the proxy to see it here.
         </div>
       ) : (
-        <table className="requests-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Model</th>
-              <th>Path</th>
-              <th>Status</th>
-              <th>Duration</th>
-              <th>TTFB</th>
-              <th>Input</th>
-              <th>Output</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((req) => (
-              <tr key={req.id} onClick={() => handleRowClick(req)}>
-                <td>{formatTime(req.timestamp)}</td>
-                <td>{req.model || '-'}</td>
-                <td>{req.path}</td>
-                <td className={req.status >= 400 ? 'status-error' : 'status-ok'}>
-                  {req.status}
-                </td>
-                <td>{formatDuration(req.duration_ms)}</td>
-                <td>{formatDuration(req.ttfb_ms)}</td>
-                <td>{formatNumber(req.input_tokens)}</td>
-                <td>{formatNumber(req.output_tokens)}</td>
+        <>
+          <table className="requests-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Model</th>
+                <th>Path</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>TTFB</th>
+                <th>Input</th>
+                <th>Output</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {requests.map((req) => (
+                <tr key={req.id} onClick={() => handleRowClick(req)}>
+                  <td>{formatTime(req.timestamp)}</td>
+                  <td>{req.model || '-'}</td>
+                  <td>{req.path}</td>
+                  <td className={req.status >= 400 ? 'status-error' : 'status-ok'}>
+                    {req.status}
+                  </td>
+                  <td>{formatDuration(req.duration_ms)}</td>
+                  <td>{formatDuration(req.ttfb_ms)}</td>
+                  <td>{formatNumber(req.input_tokens)}</td>
+                  <td>{formatNumber(req.output_tokens)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="pagination">
+            <div className="page-size">
+              <label htmlFor="page-size">每页:</label>
+              <select
+                id="page-size"
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size} 条
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="page-info">
+              第 {currentPage} / {totalPages} 页
+            </div>
+
+            <div className="page-actions">
+              <button onClick={handlePrevPage} disabled={currentPage === 1}>
+                上一页
+              </button>
+              <button onClick={handleNextPage} disabled={currentPage === totalPages}>
+                下一页
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {selected && (

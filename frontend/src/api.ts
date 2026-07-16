@@ -2,11 +2,17 @@ import type { Metrics, RequestRecord, RequestSummary } from './types';
 
 const API_BASE = '/api';
 
-export async function fetchRequests(limit = 100): Promise<RequestSummary[]> {
-  const res = await fetch(`${API_BASE}/requests?limit=${limit}`);
+export interface PaginatedRequests {
+  items: RequestSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function fetchRequests(limit = 100, offset = 0): Promise<PaginatedRequests> {
+  const res = await fetch(`${API_BASE}/requests?limit=${limit}&offset=${offset}`);
   if (!res.ok) throw new Error('Failed to fetch requests');
-  const data = await res.json();
-  return data.items || [];
+  return res.json();
 }
 
 export async function fetchRequest(id: string): Promise<RequestRecord> {

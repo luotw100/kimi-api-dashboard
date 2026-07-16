@@ -36,6 +36,32 @@ async def health():
     return {"status": "ok"}
 
 
+_ALLOWED_PAGE_SIZES = {10, 20, 50, 100}
+
+
+def _validate_pagination(limit: int, offset: int) -> None:
+    """Reject non-conventional pagination parameters."""
+    if limit not in _ALLOWED_PAGE_SIZES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"limit must be one of {sorted(_ALLOWED_PAGE_SIZES)}",
+        )
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be non-negative")
+    if offset % limit != 0:
+        raise HTTPException(status_code=400, detail="offset must be a multiple of limit")
+
+
+def _filter_summary(summary: dict[str, Any], model: str | None, path: str | None, status: int | None) -> bool:
+    if model is not None and summary.get("model") != model:
+        return False
+    if path is not None and summary.get("path") != path:
+        return False
+    if status is not None and summary.get("status") != status:
+        return False
+    return True
+
+
 @dashboard_router.get("/api/requests")
 async def list_requests(
     limit: int = Query(100, ge=1, le=1000),
@@ -44,24 +70,16 @@ async def list_requests(
     path: str | None = Query(None),
     status: int | None = Query(None),
 ):
-    records = await shard_manager.read_all_records(limit=limit + offset, offset=0)
-    results = []
-    skipped = 0
-    for record in records:
-        summary = _to_summary(record)
-        if model and summary.get("model") != model:
-            continue
-        if path and summary.get("path") != path:
-            continue
-        if status is not None and summary.get("status") != status:
-            continue
-        if skipped < offset:
-            skipped += 1
-            continue
-        results.append(summary)
-        if len(results) >= limit:
-            break
-    return JSONResponse({"items": results, "limit": limit, "offset": offset})
+    _validate_pagination(limit, offset)
+    records = await shard_manager.read_all_records(limit=None, offset=0)
+    filtered = [
+        summary
+        for record in records
+        if _filter_summary(summary := _to_summary(record), model, path, status)
+    ]
+    total = len(filtered)
+    paginated = filtered[offset:offset + limit]
+    return JSONResponse({"items": paginated, "limit": limit, "offset": offset, "total": total})
 
 
 @dashboard_router.get("/api/requests/{request_id}")
