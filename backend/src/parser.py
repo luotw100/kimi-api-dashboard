@@ -73,7 +73,7 @@ def extract_model(request_body: dict[str, Any]) -> str | None:
     return request_body.get("model") or request_body.get("model_name")
 
 
-def _calc_input_tokens(usage: dict) -> int | None:
+def _calc_input_tokens(usage: dict) -> tuple[int | None, int | None, int | None]:
     base = _safe_int(usage.get("input_tokens"))
     cache_creation = _safe_int(usage.get("cache_creation_input_tokens"))
     cache_read = _safe_int(usage.get("cache_read_input_tokens"))
@@ -83,7 +83,7 @@ def _calc_input_tokens(usage: dict) -> int | None:
         if v is not None:
             total += v
             has_any = True
-    return total if has_any else None
+    return (total if has_any else None, cache_creation, cache_read)
 
 
 def parse_response_for_usage(
@@ -95,6 +95,8 @@ def parse_response_for_usage(
         "input_tokens": None,
         "output_tokens": None,
         "total_tokens": None,
+        "cache_creation_input_tokens": None,
+        "cache_read_input_tokens": None,
         "stop_reason": None,
         "error": None,
     }
@@ -116,6 +118,8 @@ def parse_response_for_usage(
         events = _parse_sse_events(response_body)
         input_tokens = None
         output_tokens = None
+        cache_creation_input_tokens = None
+        cache_read_input_tokens = None
         stop_reason = None
 
         for event in events:
@@ -123,7 +127,11 @@ def parse_response_for_usage(
             usage = event.get("usage")
             if usage and isinstance(usage, dict):
                 if input_tokens is None:
-                    input_tokens = _calc_input_tokens(usage)
+                    input_tokens, cache_creation, cache_read = _calc_input_tokens(usage)
+                    if cache_creation is not None:
+                        cache_creation_input_tokens = cache_creation
+                    if cache_read is not None:
+                        cache_read_input_tokens = cache_read
                 if "output_tokens" in usage:
                     output_tokens = _safe_int(usage.get("output_tokens"))
 
@@ -135,6 +143,11 @@ def parse_response_for_usage(
                 last_output = _safe_int(_find_nested(event, "output_tokens"))
                 if last_output is not None:
                     output_tokens = last_output
+
+            if cache_creation_input_tokens is None:
+                cache_creation_input_tokens = _safe_int(_find_nested(event, "cache_creation_input_tokens"))
+            if cache_read_input_tokens is None:
+                cache_read_input_tokens = _safe_int(_find_nested(event, "cache_read_input_tokens"))
 
             if event_type in ("message_delta", "message_stop", "content_block_stop"):
                 sr = event.get("delta", {}).get("stop_reason") if isinstance(event.get("delta"), dict) else None
@@ -151,10 +164,20 @@ def parse_response_for_usage(
             all_input = [_safe_int(v) for v in _find_all_nested(events, "input_tokens") if _safe_int(v) is not None]
             if all_input:
                 input_tokens = all_input[0]
+        if cache_creation_input_tokens is None:
+            all_creation = [_safe_int(v) for v in _find_all_nested(events, "cache_creation_input_tokens") if _safe_int(v) is not None]
+            if all_creation:
+                cache_creation_input_tokens = all_creation[-1]
+        if cache_read_input_tokens is None:
+            all_read = [_safe_int(v) for v in _find_all_nested(events, "cache_read_input_tokens") if _safe_int(v) is not None]
+            if all_read:
+                cache_read_input_tokens = all_read[-1]
 
         result["input_tokens"] = input_tokens
         result["output_tokens"] = output_tokens
         result["stop_reason"] = stop_reason
+        result["cache_creation_input_tokens"] = cache_creation_input_tokens
+        result["cache_read_input_tokens"] = cache_read_input_tokens
 
     else:
         try:
@@ -164,7 +187,10 @@ def parse_response_for_usage(
 
         usage = data.get("usage") if isinstance(data, dict) else None
         if usage and isinstance(usage, dict):
-            result["input_tokens"] = _calc_input_tokens(usage)
+            input_tokens, cache_creation_input_tokens, cache_read_input_tokens = _calc_input_tokens(usage)
+            result["input_tokens"] = input_tokens
+            result["cache_creation_input_tokens"] = cache_creation_input_tokens
+            result["cache_read_input_tokens"] = cache_read_input_tokens
             result["output_tokens"] = _safe_int(usage.get("output_tokens"))
 
         if isinstance(data, dict):
@@ -174,6 +200,16 @@ def parse_response_for_usage(
         result["total_tokens"] = (result["input_tokens"] or 0) + (result["output_tokens"] or 0)
 
     return result
+
+
+def parse_sse_events(body: str | bytes) -> list[dict]:
+    """Public helper to parse a Server-Sent Events response body into a list of JSON events."""
+    if isinstance(body, bytes):
+        try:
+            body = body.decode("utf-8")
+        except UnicodeDecodeError:
+            return []
+    return _parse_sse_events(body)
 
 
 def is_streaming_request(request_body: dict[str, Any]) -> bool:

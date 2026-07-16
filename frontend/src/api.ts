@@ -1,4 +1,4 @@
-import type { Metrics, RequestRecord, RequestSummary } from './types';
+import type { Insights, Metrics, RequestRecord, RequestSummary } from './types';
 
 const API_BASE = '/api';
 
@@ -24,5 +24,11 @@ export async function fetchRequest(id: string): Promise<RequestRecord> {
 export async function fetchMetrics(window = 60): Promise<Metrics> {
   const res = await fetch(`${API_BASE}/metrics?window=${window}`);
   if (!res.ok) throw new Error('Failed to fetch metrics');
+  return res.json();
+}
+
+export async function fetchInsights(window = 60): Promise<Insights> {
+  const res = await fetch(`${API_BASE}/insights?window=${window}`);
+  if (!res.ok) throw new Error('Failed to fetch insights');
   return res.json();
 }

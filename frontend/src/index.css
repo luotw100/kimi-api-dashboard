@@ -271,3 +271,266 @@ header h1 {
     justify-content: center;
   }
 }
+
+/* Insights panel */
+.insights-panel {
+  margin-bottom: 24px;
+}
+
+.insights-title {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  color: #f8fafc;
+}
+
+.insights-section {
+  margin-bottom: 24px;
+}
+
+.insights-section > h3,
+.insights-section > h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #94a3b8;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.chart-card {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #334155;
+}
+
+.chart-card.wide {
+  grid-column: 1 / -1;
+}
+
+.chart-card > h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.chart-wrapper {
+  width: 100%;
+  min-height: 220px;
+}
+
+.latency-metrics {
+  margin-bottom: 16px;
+}
+
+.top-slow-table-wrapper {
+  overflow: auto;
+}
+
+.top-slow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.top-slow-table th,
+.top-slow-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+}
+
+.top-slow-table th {
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.cost-by-model {
+  margin-top: 16px;
+}
+
+.cost-by-model h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.cost-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.cost-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.cost-model {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.cost-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.cost-detail {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* Detail tabs */
+.detail-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid #334155;
+  background: #0f172a;
+}
+
+.detail-tab {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.detail-tab:hover {
+  color: #e2e8f0;
+}
+
+.detail-tab.active {
+  color: #f8fafc;
+  border-bottom-color: #22c55e;
+}
+
+/* Timing bar */
+.timing-section {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.timing-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.timing-bar {
+  display: flex;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #334155;
+}
+
+.timing-ttfb {
+  background: #f59e0b;
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.timing-stream {
+  background: #22c55e;
+  height: 100%;
+  transition: width 0.3s;
+}
+
+/* Event list */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-item {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.event-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.event-summary:hover {
+  background: #1e293b;
+}
+
+.event-index {
+  color: #94a3b8;
+  font-size: 12px;
+  min-width: 36px;
+}
+
+.event-type {
+  background: #334155;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #22c55e;
+}
+
+.event-brief {
+  flex: 1;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-toggle {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.event-raw {
+  margin: 0;
+  border-top: 1px solid #334155;
+  border-radius: 0;
+  max-height: 300px;
+}
+
+.event-empty {
+  color: #94a3b8;
+  font-size: 14px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}

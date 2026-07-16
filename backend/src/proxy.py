@@ -80,6 +80,29 @@ async def _log_record(
     parsed["ttfb_ms"] = ttfb_ms
     parsed["is_streaming"] = is_streaming
 
+    # Compute prefill / decode throughput for LLM calls.
+    # Prefill: input tokens processed before first output byte (approximated by TTFB).
+    # Decode: output tokens generated after first byte until response ends.
+    input_tokens = parsed.get("input_tokens")
+    output_tokens = parsed.get("output_tokens")
+    if ttfb_ms and ttfb_ms > 0 and input_tokens is not None:
+        parsed["prefill_tps"] = round(input_tokens / (ttfb_ms / 1000), 2)
+    else:
+        parsed["prefill_tps"] = None
+    if (
+        duration_ms is not None
+        and ttfb_ms is not None
+        and duration_ms > ttfb_ms
+        and output_tokens is not None
+    ):
+        decode_ms = duration_ms - ttfb_ms
+        if decode_ms > 0:
+            parsed["decode_tps"] = round(output_tokens / (decode_ms / 1000), 2)
+        else:
+            parsed["decode_tps"] = None
+    else:
+        parsed["decode_tps"] = None
+
     record = {
         "id": request_id,
         "timestamp": start_iso,

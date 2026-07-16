@@ -24,6 +24,8 @@ class RequestSummary(BaseModel):
     ttfb_ms: float | None
     input_tokens: int | None
     output_tokens: int | None
+    prefill_tps: float | None
+    decode_tps: float | None
 
 
 class WSEvent(BaseModel):

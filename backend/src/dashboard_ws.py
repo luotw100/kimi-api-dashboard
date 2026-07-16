@@ -43,6 +43,8 @@ class WebSocketManager:
             ttfb_ms=parsed.get("ttfb_ms"),
             input_tokens=parsed.get("input_tokens"),
             output_tokens=parsed.get("output_tokens"),
+            prefill_tps=parsed.get("prefill_tps"),
+            decode_tps=parsed.get("decode_tps"),
         )
         event = WSEvent(type="request_finished", payload=summary)
         await self.broadcast(event.model_dump())
